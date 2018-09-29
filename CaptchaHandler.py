@@ -41,7 +41,6 @@ def get_captcha_id():
     进入主页，找到标签，拿到结果
     这里有两个id，一个是 被执行人 一个是失信被执行人
     """
-    is_right = False
     file_shixin = config.file_captcha_shixin
     file_zhixin = config.file_captcha_zhixing
 
@@ -67,7 +66,6 @@ def get_captcha_id():
         captcha_id_shixin = parse_captcha_id(html_shixin)
 
         if captcha_id_shixin is not None and captcha_id_zhixing is not None:
-            is_right = True
             # 做存储
 
             # 放入各自的文件里
@@ -75,7 +73,12 @@ def get_captcha_id():
             write_2_file(file_path=file_zhixin_h, ctx=captcha_id_zhixing)
             write_2_file(file_path=file_zhixin, ctx=captcha_id_zhixing)
             write_2_file(file_path=file_shixin, ctx=captcha_id_shixin)
-    return is_right
+
+            logger.debug('完成captcha id 获取并写入')
+        else:
+            logger.warning('未完成captcha id 获取')
+    else:
+        logger.warning('获取captcha id 请求html过程失败')
 
 def parse_captcha_id(html):
     selector = parse_lxml(html)
@@ -110,6 +113,8 @@ def download_img_and_ocr(type):
         params = config.params_captcha
         params.update({'captchaId': i.strip(), 'random': random.random()})
         # 开始请求
+
+        logger.debug('下载验证码图片\t{0}\t{1}'.format(type, i.strip()))
         di = Download_img()
         img = di.receive_and_request(url=url, headers=headers, params=params, method='GET')
         if img != 'null_html':
@@ -129,11 +134,16 @@ def download_img_and_ocr(type):
             result_dict = loads_json(result)
             if result_dict.get('status_code') == 200:
                 captcha_list.append([i.strip(), result_dict.get('data').get('captcha')])
+                logger.debug('完成图片ocr\t{0}\t{1}'.format(type, i.strip()))
+        else:
+            logger.warning('下载验证码图片失败\t{0}\t{1}'.format(type, i.strip()))
+
     # 丢入队列里
     # 先要加入一个判断，列表不为空则行
     if captcha_list != []:
         que = config.que.get(type)
         push_2_que(que, dumps_json(captcha_list))
+        logger.debug('ocr结果推入队列')
 
 
 class Download_img(RequestAPI):
