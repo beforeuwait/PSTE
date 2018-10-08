@@ -11,12 +11,19 @@ update:
 
     2018-09-29:
         完成验证码部分的识别，将不做图片保存处理，直接在线ocr
+    2018-10-08:
+        更新逻辑
+        1. 请求captchaID时候偶尔会出现拿不到数据的情况,遇到这类情况，立马重新执行
+        2. 配合spider，队里只放一个最新的captcha
+        3. 针对ocr不是200的情况，都立马重新执行
 """
 
 
+import os
 import random
 import time
 import base64
+import logging
 from HTTP.RequestServerApi import RequestAPI
 import HTTP.requests_server_config as scf
 from utils import parse_lxml
@@ -29,10 +36,16 @@ from utils import do_fun_cycle
 from utils import do_fun_cycle_by_order
 from utils import clean_que
 from utils import wait_msg
-from config import logger
 import config
 
 
+logger = logging.getLogger()
+
+logger.setLevel(logging.INFO)   # 定义为INFO是因为requests要写debug
+request_handler = logging.FileHandler(os.path.abspath('./log/captcha.log'))
+fmt = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+request_handler.setFormatter(fmt)
+logger.addHandler(request_handler)
 """负责请求iframe，然后拿到captcha_id,保存下来"""
 
 
@@ -61,7 +74,6 @@ def get_captcha_id():
     html_shixin = ra.receive_and_request(url=url_shixin, headers=headers_shixin, method='GET')
 
     if html_zhixing != 'null_html' and html_shixin != 'null_html':
-
         captcha_id_zhixing = parse_captcha_id(html_zhixing)
         captcha_id_shixin = parse_captcha_id(html_shixin)
 
@@ -73,8 +85,7 @@ def get_captcha_id():
             write_2_file(file_path=file_zhixin_h, ctx=captcha_id_zhixing)
             write_2_file(file_path=file_zhixin, ctx=captcha_id_zhixing)
             write_2_file(file_path=file_shixin, ctx=captcha_id_shixin)
-
-            logger.debug('完成captcha id 获取并写入')
+            logger.info('完成captcha id 获取并写入')
         else:
             logger.warning('未完成captcha id 获取')
     else:
@@ -99,6 +110,8 @@ def download_img_and_ocr(type):
     下载的过程，将 zhixing 和 shixin文件里的captchaId都下载
     给个开关
     """
+    is_go_on = False
+
     headers = config.headers_CaptchaHandler
     captcha_list = []
     if type == 'zhixing':
@@ -109,12 +122,12 @@ def download_img_and_ocr(type):
         captcha = config.file_captcha_shixin
         headers.update({'Host': config.host_zs.get('shixin')})
     for i in open(captcha, 'r', encoding='utf8'):
-        url = config.url_captcha_zhixing if type == 'zhixing' else config.url_iframe_shixin
+        url = config.url_captcha_zhixing if type == 'zhixing' else config.url_captcha_shixin
         params = config.params_captcha
         params.update({'captchaId': i.strip(), 'random': random.random()})
         # 开始请求
 
-        logger.debug('下载验证码图片\t{0}\t{1}'.format(type, i.strip()))
+        logger.info('下载验证码图片\t{0}\t{1}'.format(type, i.strip()))
         di = Download_img()
         img = di.receive_and_request(url=url, headers=headers, params=params, method='GET')
         if img != 'null_html':
@@ -134,24 +147,27 @@ def download_img_and_ocr(type):
             result_dict = loads_json(result)
             if result_dict.get('status_code') == 200:
                 captcha_list.append([i.strip(), result_dict.get('data').get('captcha')])
-                logger.debug('完成图片ocr\t{0}\t{1}'.format(type, i.strip()))
+                logger.info('完成图片ocr\t{0}\t{1}'.format(type, i.strip()))
+                is_go_on = True
         else:
             logger.warning('下载验证码图片失败\t{0}\t{1}'.format(type, i.strip()))
 
     # 丢入队列里
     # 先要加入一个判断，列表不为空则行
+
     if captcha_list != []:
         que = config.que.get(type)
+        print(captcha_list)
         push_2_que(que, dumps_json(captcha_list))
         logger.debug('ocr结果推入队列')
+
+    return is_go_on
 
 
 class Download_img(RequestAPI):
 
     def __init__(self):
         super(Download_img, self).__init__()
-        # 不需要代理
-        self.discard_proxy()
 
     def do_request(self, url, method, params, payloads):
         """根据指定的请求方式去请求"""
@@ -206,7 +222,12 @@ def main_theme():
         # 按指定次数去迭代
         do_fun_cycle(get_captcha_id, captcha_count)
         # 执行ocr
-        do_fun_cycle_by_order(download_img_and_ocr, ['zhixing', 'shixin'])
+        is_go_on = do_fun_cycle_by_order(download_img_and_ocr, ['zhixing', 'shixin'])
+        if not is_go_on:
+            # 失败ocr,重试
+            logger.warning('ocr发生错误，重试')
+            time.sleep(0.1)
+            continue
         # 接下来休眠时间同时监听
         start = time.time()
         while int(time.time() - start) < sleep_time:
@@ -214,6 +235,7 @@ def main_theme():
             msg = wait_msg(fb_que)
             if msg:
                 break
+
 
 
 

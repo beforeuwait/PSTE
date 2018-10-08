@@ -1,6 +1,7 @@
 # coding=utf8
 
 
+import time
 import os
 import json
 import config
@@ -21,9 +22,12 @@ def do_fun_cycle(fun, count):
 
 def do_fun_cycle_by_order(fun, order):
     """重复执行函数"""
+    is_go_on = False
     for each in order:
-        fun(each)
-    return
+        is_go_on = fun(each)
+        if is_go_on is not True:
+            break
+    return is_go_on
 
 
 # 重置文件
@@ -56,6 +60,19 @@ def write_2_file(file_path, ctx):
     path = os.path.abspath(file_path)
     with open(path, 'a', encoding='utf8') as f:
         f.write(ctx + '\n')
+    return
+
+def write_2_file_with_list(file_path, data_list):
+    """
+    向指定目录写入文件
+    :param path: 路径
+    :param ctx: 内容
+    :return:
+    """
+    path = os.path.abspath(file_path)
+    with open(path, 'a', encoding='utf8') as f:
+        for each in data_list:
+            f.write('\u0001'.join(each) + '\n')
     return
 
 # 覆盖写入
@@ -224,3 +241,19 @@ def clean_que(que_list):
 
     except Exception as e:
         logger.warning('Redis清洗队列数据时出错,\t{0}'.format(e))
+
+def recevice_msg_long(que):
+    """等待指定队列有数据"""
+    msg = None
+    try:
+        redis_cli = redis_conn()
+        while True:
+            if redis_cli.exists(que):
+                msg = redis_cli.rpop(que)
+                msg = loads_json(msg)
+                break
+            time.sleep(0.1)
+    except Exception as e:
+        logger.warning('Redis接受数据出错,\t{0}'.format(e))
+
+    return msg

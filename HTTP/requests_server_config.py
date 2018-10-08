@@ -47,8 +47,8 @@ filter_dict = {"isRequest": "notRequestLog"}
 # 代理
 
 proxy = {
-        "http": "xxxxxxx",
-        "https": "xxxxxxx",
+        "http": "http://HUICU80ZV6SK58WP:21CE6FB2A2AE49B0@http-pro.abuyun.com:9010",
+        "https": "http://HUICU80ZV6SK58WP:21CE6FB2A2AE49B0@http-pro.abuyun.com:9010",
     }
 
 # 重试次数我

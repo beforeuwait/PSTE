@@ -90,7 +90,6 @@ class GeneralRequest():
         # 带参和不带参的处理放到请求发起的地方，这个函数就是纯粹的发起一次请求而已
         """
         response = self.s.get(url, allow_redirects=False, timeout=30)
-
         return response
 
     def POST_request(self, url, payloads):
@@ -206,8 +205,8 @@ class GeneralRequest():
     def do_request(self, url, method, params, payloads):
         """根据指定的请求方式去请求"""
         retry = scf.retry
-        # 有的网页直接反空，不建议用空，不好去分析原因,
         html = 'null_html'
+        # 有的网页直接反空，不建议用空，不好去分析原因,
         while retry > 0:
             response = None
             try:
@@ -228,7 +227,7 @@ class GeneralRequest():
                 time.sleep(error_sleep)
                 
             else:
-                # 拿到response后，处理 
+                # 拿到response后，处理
                 status_code = response.status_code
                 is_go_on = self.deal_status_code(status_code)
                 """
