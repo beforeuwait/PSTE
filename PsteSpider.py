@@ -37,7 +37,9 @@ todo list:
 
 import time
 import re
+import os
 import config
+import logging
 from copy import deepcopy
 from HTTP.RequestServerApi import RequestAPI
 import HTTP.requests_server_config as scf
@@ -49,10 +51,19 @@ from utils import dumps_json
 from utils import write_2_file_with_list
 from utils import write_2_file
 
+spider_log = logging.getLogger()
+
+spider_log.setLevel(logging.INFO)   # 定义为INFO是因为requests要写debug
+request_handler = logging.FileHandler(os.path.abspath('./log/spider.log'))
+fmt = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+request_handler.setFormatter(fmt)
+spider_log.addHandler(request_handler)
+
+
 class NewRequestAPI(RequestAPI):
     """需要重写状态码部分"""
 
-    def do_request(self, url, method, params, payloads):
+    def do_request(self, url, method, params, payloads, allow_redirects):
         """根据指定的请求方式去请求"""
         retry = scf.retry
         html = 'null_html'
@@ -64,7 +75,7 @@ class NewRequestAPI(RequestAPI):
                 if method == 'GET':
                     # 请求前判断是否有参数，有的话添加到session里,请求后则删除
                     self.update_params(params)
-                    response = self.GET_request(url)
+                    response = self.GET_request(url, allow_redirects)
                     self.discard_params()
 
                 elif method == 'POST':
@@ -72,7 +83,7 @@ class NewRequestAPI(RequestAPI):
 
             except Exception as e:
                 # 输出log, 这里的错误都是网络上的错误
-                scf.logger.info('请求出错, 错误原因:\t{0}'.format(e), extra=scf.filter_dict)
+                scf.http_logger.info('请求出错, 错误原因:\t{0}'.format(e), extra=scf.filter_dict)
                 time.sleep(scf.error_sleep)
 
             else:
@@ -157,14 +168,12 @@ class GenerallySpider():
         not_break, retry = True, 1
         while current_page <= pages and not_break:
             # 允许带着错误验证码的重试的次数为3
-            if retry > 3:
+            if retry > 2:
                 not_break = False
-
             self.params.update({'currentPage': current_page})
             html = api.receive_and_request(url=url, headers=headers, payloads=self.params, method='POST')
             if html != 'null_html':
                 data, pages = self.parse_list_and_pages(html)
-                print(data, pages)
                 # 对data进行判断
                 if data is None:
                     # 重新获取验证码返回从新执行
@@ -277,6 +286,7 @@ class ZhixingSpider(GenerallySpider):
                             'captchaId': self.captchaId,
                             'j_captcha': self.j_captcha})
 
+
     def pop_captcha_info(self):
         """
         从指定的队列拿到指定的验证码数据
@@ -284,7 +294,7 @@ class ZhixingSpider(GenerallySpider):
         que = config.que.get(self.name)
         captcha = recevice_msg_long(que)
         self.captchaId = captcha[0][0]
-        self.j_captcha = captcha[0][1]
+        self.j_captcha = captcha[0][1].lower()
 
 
     def construct_params_info(self, oid):
@@ -320,7 +330,7 @@ class ShixinSpider(GenerallySpider):
         que = config.que.get(self.name)
         captcha = recevice_msg_long(que)
         self.captchaId = captcha[0][0]
-        self.pCode = captcha[0][1]
+        self.pCode = captcha[0][1].lower()
 
 
     def construct_params(self):
@@ -417,12 +427,12 @@ def run(choice, pname, cardNum):
 
     根据相应的处理，发布不同的任务
     """
+    spider_log.debug('接收任务\t{0}'.format(choice))
     switch = {
         'zhixing': ZhixingSpider,
         'shixin': ShixinSpider,
         'baidu': BaiduSpider
     }
-
     # 实例化选择
     m = switch.get(choice)(pname, cardNum)
     info = m.do()

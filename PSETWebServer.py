@@ -66,7 +66,6 @@ class MainHandler(tornado.web.RequestHandler):
 
         pool.close()
         pool.join()
-
         # 更新被执行人
         api_info['data']['zhixing'] = result[0].get()
         # 更新失信被执行人
@@ -79,9 +78,9 @@ class MainHandler(tornado.web.RequestHandler):
 
 
 
-application = tornado.web.Application([(r"/pste", MainHandler),])
+application = tornado.web.Application([(r"/pste2", MainHandler),])
 
 
 if __name__ == "__main__":
-    application.listen(23000)
+    application.listen(23080)
     IOLoop.instance().start()

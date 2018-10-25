@@ -18,7 +18,7 @@ update:
         3. 针对ocr不是200的情况，都立马重新执行
 """
 
-
+import datetime
 import os
 import random
 import time
@@ -36,6 +36,7 @@ from utils import do_fun_cycle
 from utils import do_fun_cycle_by_order
 from utils import clean_que
 from utils import wait_msg
+from utils import save_img
 import config
 
 
@@ -136,6 +137,9 @@ def download_img_and_ocr(type):
             file_path = config.img_file.format(captcha)
             save_img(file_path=file_path, img=img)
             """
+            file_path = config.img_file.format(i.strip())
+            # save_img(file_path=file_path, img=img)
+            # print(datetime.datetime.today().strftime('%H:%M:%S'), '保存\t', file_path)
             # 执行ocr
             url = config.url_svm
             img_d = base64.b64encode(img)
@@ -157,7 +161,7 @@ def download_img_and_ocr(type):
 
     if captcha_list != []:
         que = config.que.get(type)
-        print(captcha_list)
+        logger.debug(captcha_list)
         push_2_que(que, dumps_json(captcha_list))
         logger.debug('ocr结果推入队列')
 
@@ -169,7 +173,7 @@ class Download_img(RequestAPI):
     def __init__(self):
         super(Download_img, self).__init__()
 
-    def do_request(self, url, method, params, payloads):
+    def do_request(self, url, method, params, payloads, allow_redirects):
         """根据指定的请求方式去请求"""
         retry = scf.retry
         # 有的网页直接反空，不建议用空，不好去分析原因,
@@ -179,14 +183,13 @@ class Download_img(RequestAPI):
             try:
                 if method == 'GET':
                     self.update_params(params)
-                    response = self.GET_request(url)
+                    response = self.GET_request(url, allow_redirects)
                     self.discard_params()
                 elif method == 'POST':
                     response = self.POST_request(url=url, payloads=payloads)
             except Exception as e:
                 # 输出log, 这里的错误都是网络上的错误
-                # logger.info('请求出错, 错误原因:', exc_info=True, extra=filter_dict)
-                logger.info('请求出错, 错误原因:\t{0}'.format(e), extra=scf.filter_dict)
+                scf.http_logger.info('请求出错, 错误原因:\t{0}'.format(e), extra=scf.filter_dict)
                 time.sleep(scf.error_sleep)
             else:
                 # 拿到response后，处理
