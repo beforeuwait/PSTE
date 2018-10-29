@@ -207,6 +207,7 @@ def translate_2_json_dict(ctx):
 def redis_conn():
     """链接redis"""
     return StrictRedis(host=config.redis_host, port=config.redis_port, db=config.redis_db)
+    # return StrictRedis(host=config.redis_host2, password=config.redis_password,port=config.redis_port, db=config.redis_db)
 
 
 def push_2_que(que, ctx):
@@ -249,7 +250,8 @@ def recevice_msg_long(que):
         redis_cli = redis_conn()
         while True:
             if redis_cli.exists(que):
-                msg = redis_cli.rpop(que)
+                # msg = redis_cli.rpop(que)
+                msg = redis_cli.lpop(que)
                 msg = loads_json(msg)
                 break
             time.sleep(0.1)
@@ -257,3 +259,26 @@ def recevice_msg_long(que):
         logger.warning('Redis接受数据出错,\t{0}'.format(e))
 
     return msg
+
+def static_msg_count(que):
+    """统计指定的队列，有消息的数据"""
+    count = 0
+    msg_list = []
+    try:
+        redis_cli = redis_conn()
+        while True:
+            if redis_cli.exists(que):
+                msg = redis_cli.rpop(que)
+                if msg is not None:
+                    msg_list.append(loads_json(msg))
+                    count += 1
+            else:
+                break
+        # 写入队列,这时候不用考虑先后问题
+        if msg_list != []:
+            for i in msg_list:
+                redis_cli.lpush(i)
+
+    except Exception as e:
+        logger.warning('Redis统计\t{0}队列数量时候出错\t {1}'.format(que, e))
+    return count

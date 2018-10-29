@@ -16,9 +16,14 @@ update:
         1. 请求captchaID时候偶尔会出现拿不到数据的情况,遇到这类情况，立马重新执行
         2. 配合spider，队里只放一个最新的captcha
         3. 针对ocr不是200的情况，都立马重新执行
+
+    2018-10-29:
+        更新验证码逻辑
+        1. 验证码在队列的数量更改为10个
+        2. 方式为FIFO (由spider在调取时候)
+        3. 始终维持队列里的验证码数据为10个
 """
 
-import datetime
 import os
 import random
 import time
@@ -37,6 +42,7 @@ from utils import do_fun_cycle_by_order
 from utils import clean_que
 from utils import wait_msg
 from utils import save_img
+from utils import static_msg_count
 import config
 
 
@@ -110,6 +116,8 @@ def download_img_and_ocr(type):
     需要去重写 requestAPI的 do_request
     下载的过程，将 zhixing 和 shixin文件里的captchaId都下载
     给个开关
+
+    # 2018-10-29 在每次执行最后，将文件清空
     """
     is_go_on = False
 
@@ -156,6 +164,8 @@ def download_img_and_ocr(type):
         else:
             logger.warning('下载验证码图片失败\t{0}\t{1}'.format(type, i.strip()))
 
+    # 将文件清空
+    initial_file(captcha)
     # 丢入队列里
     # 先要加入一个判断，列表不为空则行
 
@@ -216,6 +226,7 @@ def main_theme():
     que_list = [config.que.get('zhixing'), config.que.get('shixin'), config.que.get('feedback')]
     fb_que = config.que.get('feedback')
 
+    """
     while True:
         # 获取id, 执行和失信同时获取各一个
         # 清空队列
@@ -238,7 +249,29 @@ def main_theme():
             msg = wait_msg(fb_que)
             if msg:
                 break
+    """
+    # 2018-10-29: 执行新逻辑
+    # 在有效期2分钟内，要始终保持队列20个可用的，任意监听一个队列就行
+    while True:
+        start = time.time()
 
+        # 统计消息队列个数
+        count = static_msg_count(que_list[0])
+        # 开始运行
+        # 按指定次数去迭代
+        if count < 20:
+            do_fun_cycle(get_captcha_id, 20-count)
+            # 执行ocr
+            do_fun_cycle_by_order(download_img_and_ocr, ['zhixing', 'shixin'])
+
+        if time.time() - start > 120:
+            # 超过2分钟，全部验证码失效，重新开始获取验证码
+            # 清空队列
+            clean_que(que_list)
+            # 清空文件
+            initial_file([file_shixin, file_zhixin])
+        else:
+            time.sleep(0.1)
 
 
 
