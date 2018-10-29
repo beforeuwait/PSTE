@@ -277,8 +277,9 @@ def static_msg_count(que):
         # 写入队列,这时候不用考虑先后问题
         if msg_list != []:
             for i in msg_list:
-                redis_cli.lpush(i)
+                redis_cli.lpush(que, dumps_json(i))
 
     except Exception as e:
         logger.warning('Redis统计\t{0}队列数量时候出错\t {1}'.format(que, e))
+        print(e)
     return count

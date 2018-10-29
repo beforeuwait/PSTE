@@ -39,9 +39,8 @@ from utils import initial_file
 from utils import push_2_que
 from utils import do_fun_cycle
 from utils import do_fun_cycle_by_order
+from utils import overwrite_file
 from utils import clean_que
-from utils import wait_msg
-from utils import save_img
 from utils import static_msg_count
 import config
 
@@ -88,10 +87,12 @@ def get_captcha_id():
             # 做存储
 
             # 放入各自的文件里
-            write_2_file(file_path=file_shixin_h, ctx=captcha_id_shixin)
-            write_2_file(file_path=file_zhixin_h, ctx=captcha_id_zhixing)
-            write_2_file(file_path=file_zhixin, ctx=captcha_id_zhixing)
-            write_2_file(file_path=file_shixin, ctx=captcha_id_shixin)
+
+            overwrite_file(file_path=file_shixin_h, ctx=captcha_id_shixin)
+            overwrite_file(file_path=file_zhixin_h, ctx=captcha_id_zhixing)
+            overwrite_file(file_path=file_zhixin, ctx=captcha_id_zhixing)
+            overwrite_file(file_path=file_shixin, ctx=captcha_id_shixin)
+
             logger.info('完成captcha id 获取并写入')
         else:
             logger.warning('未完成captcha id 获取')
@@ -145,9 +146,6 @@ def download_img_and_ocr(type):
             file_path = config.img_file.format(captcha)
             save_img(file_path=file_path, img=img)
             """
-            file_path = config.img_file.format(i.strip())
-            # save_img(file_path=file_path, img=img)
-            # print(datetime.datetime.today().strftime('%H:%M:%S'), '保存\t', file_path)
             # 执行ocr
             url = config.url_svm
             img_d = base64.b64encode(img)
@@ -156,16 +154,21 @@ def download_img_and_ocr(type):
                 'type': 'pste'
             }
             result = di.receive_and_request(url=url, payloads=payloads, method='POST')
-            result_dict = loads_json(result)
-            if result_dict.get('status_code') == 200:
-                captcha_list.append([i.strip(), result_dict.get('data').get('captcha')])
-                logger.info('完成图片ocr\t{0}\t{1}'.format(type, i.strip()))
-                is_go_on = True
+            try:
+                result_dict = loads_json(result)
+                if result_dict.get('status_code') == 200:
+
+                    captcha_list.append([i.strip(), result_dict.get('data').get('captcha')])
+                    logger.info('完成图片ocr\t{0}\t{1}'.format(type, i.strip()))
+                    is_go_on = True
+
+
+            except Exception as e:
+                logger.warning('ocr识别失败\t{0}'.format(e))
+
         else:
             logger.warning('下载验证码图片失败\t{0}\t{1}'.format(type, i.strip()))
 
-    # 将文件清空
-    initial_file(captcha)
     # 丢入队列里
     # 先要加入一个判断，列表不为空则行
 
@@ -221,10 +224,7 @@ def main_theme():
     """
     file_shixin = config.file_captcha_shixin
     file_zhixin = config.file_captcha_zhixing
-    captcha_count = config.captcha_count
-    sleep_time = config.sleep_time
     que_list = [config.que.get('zhixing'), config.que.get('shixin'), config.que.get('feedback')]
-    fb_que = config.que.get('feedback')
 
     """
     while True:
@@ -252,6 +252,8 @@ def main_theme():
     """
     # 2018-10-29: 执行新逻辑
     # 在有效期2分钟内，要始终保持队列20个可用的，任意监听一个队列就行
+    clean_que(que_list)
+
     while True:
         start = time.time()
 
@@ -259,10 +261,18 @@ def main_theme():
         count = static_msg_count(que_list[0])
         # 开始运行
         # 按指定次数去迭代
-        if count < 20:
+        if count < 10:
+            """
+            # 该方法是作为先下载齐需要的，这个行不通
             do_fun_cycle(get_captcha_id, 20-count)
             # 执行ocr
             do_fun_cycle_by_order(download_img_and_ocr, ['zhixing', 'shixin'])
+            """
+            for i in range(10-count):
+                do_fun_cycle(get_captcha_id, 1)
+                # 执行ocr
+                do_fun_cycle_by_order(download_img_and_ocr, ['zhixing', 'shixin'])
+
 
         if time.time() - start > 120:
             # 超过2分钟，全部验证码失效，重新开始获取验证码
