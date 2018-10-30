@@ -22,6 +22,9 @@ update:
         1. 验证码在队列的数量更改为10个
         2. 方式为FIFO (由spider在调取时候)
         3. 始终维持队列里的验证码数据为10个
+
+    2018-10-30:
+        修改bug，修改计时错误的问题
 """
 
 import os
@@ -32,7 +35,6 @@ import logging
 from HTTP.RequestServerApi import RequestAPI
 import HTTP.requests_server_config as scf
 from utils import parse_lxml
-from utils import write_2_file
 from utils import loads_json
 from utils import dumps_json
 from utils import initial_file
@@ -254,8 +256,9 @@ def main_theme():
     # 在有效期2分钟内，要始终保持队列20个可用的，任意监听一个队列就行
     clean_que(que_list)
 
+    start = time.time()
+
     while True:
-        start = time.time()
 
         # 统计消息队列个数
         count = static_msg_count(que_list[0])
@@ -280,9 +283,10 @@ def main_theme():
             clean_que(que_list)
             # 清空文件
             initial_file([file_shixin, file_zhixin])
+            start = time.time()
+
         else:
             time.sleep(0.1)
-
 
 
 if __name__ == '__main__':
