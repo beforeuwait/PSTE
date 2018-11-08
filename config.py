@@ -8,7 +8,7 @@ os.chdir(os.path.split(os.path.abspath(__file__))[0])
 #   [other]
 
 # 指定休息120秒
-sleep_time = 20
+sleep_time = 5
 
 #   [logger]
 
@@ -23,8 +23,8 @@ logger.addHandler(request_handler)
 #   【proxy】
 
 proxy = {
-        "http": "http://HUICU80ZV6SK58WP:21CE6FB2A2AE49B0@http-pro.abuyun.com:9010",
-        "https": "http://HUICU80ZV6SK58WP:21CE6FB2A2AE49B0@http-pro.abuyun.com:9010",
+        "http": "xxxxxxx",
+        "https": "xxxxxx",
     }
 
 #   【CaptchaHandler】
@@ -75,7 +75,7 @@ params_captcha = {
     'random': '0.988618299575891',
 }
 
-img_file = './img/{}.jpg'
+img_file = './img/{}.png'
 
 file_captcha_zhixing = './DB/captcha_id_zhixing.txt'
 file_captcha_shixin = './DB/captcha_id_shixin.txt'
