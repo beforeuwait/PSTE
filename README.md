@@ -67,6 +67,7 @@ new idea：在2mins内，队列保持10个ocr结果，同时调用端也保持FI
 		然后丢入队列里
 		
 		终端:
+			先启动 redis
 			python3 CaptchaHandler.py
 	
 2. 启动一个http-server 作为api
