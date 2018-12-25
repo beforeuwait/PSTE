@@ -18,8 +18,9 @@ from utils import loads_json
 # type
 _final_data = dict
 _html = str
-_zhixing_list = (list, int)
+_zs_list = (list, int)
 _query_data = list
+_data = list
 
 
 # 与captcha模块通信
@@ -46,6 +47,7 @@ class CaptchaHandler():
         """从消息队列获取最新的验证码"""
         pass
 
+
 def executoer_for_web_server(name, card) -> _final_data:
     """接口调用, 传入参数"""
     # 拿到验证码
@@ -53,12 +55,30 @@ def executoer_for_web_server(name, card) -> _final_data:
     # 先拿列表数据，再拿详情
     # 需要开2个进程同时去执行
     # pool = Pool(2)
-    data = {}
+    result = {
+        'api_status_code': '200',
+        'api_msg': [],
+        'api_status': 'success',
+        'data': {
+            'zhixing': None,
+            'shixing': None,
+            'baidu': []
+        }
+    }
 
     # data_z = get_zhixing_data(name, card)
     # print(data_z)
     data_s = get_shixin_data(name, card)
-    # return data
+    return result
+
+
+def run(name, card, choice) -> _data:
+    """启动器"""
+    switcher = {
+        'zhixing': get_zhixing_data,
+        'shixin': get_shixin_data
+    }
+    return switcher.get(choice)(name, card)
 
 
 def get_zhixing_data(name, card) -> _query_data:
@@ -75,8 +95,9 @@ def get_zhixing_data(name, card) -> _query_data:
             retry -= 1
             continue
         data_list, pages = parse_zhixing_shixin_list(html)
-        data_info = get_zhixing_each_info(data_list, http)
-        data_z.extend(data_info)
+        if data_list:
+            data_info = get_zhixing_each_info(data_list, http)
+            data_z.extend(data_info)
         curr_page += 1
     return data_z
 
@@ -98,7 +119,7 @@ def get_zhixing_list(name, card, curr_page, http) -> _html:
     return html
 
 
-def parse_zhixing_shixin_list(data_list) -> _zhixing_list:
+def parse_zhixing_shixin_list(data_list) -> _zs_list:
     """解析列表数据"""
     js_dict = loads_json(data_list)
     data, pages = [], 1
@@ -117,7 +138,7 @@ def parse_zhixing_shixin_list(data_list) -> _zhixing_list:
     return data, pages
 
 
-def get_zhixing_each_info(data_list, http):
+def get_zhixing_each_info(data_list, http) -> _data:
     """获取各执行人列表的详情"""
     data = []
     headers = cnf.headers_z_info
@@ -125,6 +146,7 @@ def get_zhixing_each_info(data_list, http):
     for each in data_list:
         pid = each[-1]
         params = deepcopy(cnf.params_z_info)
+        # todo: 添加验证码部分
         params.update({
             'id': pid,
             'captchaId': '204a24429b6643739835048a2e4e6fa4',
@@ -139,7 +161,7 @@ def get_zhixing_each_info(data_list, http):
     return data
 
 
-def get_shixin_data(name, card):
+def get_shixin_data(name, card) -> _data:
     curr_page, pages = 1, 1
     retry = 3
     data_s = []
@@ -151,17 +173,19 @@ def get_shixin_data(name, card):
             retry -= 1
             continue
         data_list, pages = parse_zhixing_shixin_list(html)
-        data_info = get_shixin_each_info(data_list, http)
-        data_s.extend(data_info)
+        if data_list:
+            data_info = get_shixin_each_info(data_list, http)
+            data_s.extend(data_info)
         curr_page += 1
+    return data_s
 
 
-
-def get_shixin_list(name, card, curr_page, http):
+def get_shixin_list(name, card, curr_page, http) -> _html:
     """获取失信被执行人数据"""
     url_s_list = cnf.url_s_list
     headers = cnf.headers_s_list
     payloads_s = cnf.payloads_s
+    # todo:装载验证码
     payloads_s.update({
         'pName': name,
         'pCardNum': card,
@@ -174,8 +198,7 @@ def get_shixin_list(name, card, curr_page, http):
     return html
 
 
-
-def get_shixin_each_info(data_list, http):
+def get_shixin_each_info(data_list, http) -> _data:
     """获取各失信被执行人详情"""
     data = []
     headers = cnf.headers_s_info
