@@ -16,11 +16,68 @@
 
 # 验证码
 
+url_ocr = 'http://47.97.181.94:21000/pstecaptcha'
+
+url_z = 'http://zhixing.court.gov.cn/search/'
+
+url_s = 'http://zxgk.court.gov.cn/shixin/'
+
+headers_z = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Cache-Control': 'max-age=0',
+    'Host': 'zhixing.court.gov.cn',
+    # 'Cookie': '_gscu_1138507821	41398408liscqj19',
+    'Proxy-Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
+}
+
+headers_s = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Cache-Control': 'max-age=0',
+    'Host': 'zxgk.court.gov.cn',
+    # 'Cookie': '_gscu_1138507821	41398408liscqj19',
+    'Proxy-Connection': 'keep-alive',
+    'Referer': 'http://zxgk.court.gov.cn/',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
+}
 
 url_z_c = 'http://zhixing.court.gov.cn/search/captcha.do?captchaId={0}&random={1}'
 
 url_s_c = 'http://zxgk.court.gov.cn/shixin/captchaNew.do?captchaId={0}&random={1}'
 
+# 验证验证码
+
+url_z_y = 'http://zhixing.court.gov.cn/search/checkyzm?captchaId={0}&pCode={1}'
+
+url_s_y = 'http://zxgk.court.gov.cn/shixin/checkyzm.do?captchaId={0}&pCode={1}'
+
+headers_s_y = {
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Host': 'zxgk.court.gov.cn',
+    'Proxy-Connection': 'keep-alive',
+    'Referer': 'http://zxgk.court.gov.cn/shixin/',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest'
+}
+
+headers_z_y = {
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Host': 'zhixing.court.gov.cn',
+    'Proxy-Connection': 'keep-alive',
+    'Referer': 'http://zhixing.court.gov.cn/search/',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest'
+}
 
 # 被执行人
 
@@ -115,4 +172,15 @@ params_s_info = {
     'caseCode': '',
     'pCode': '',
     'captchaId': '',
+}
+
+
+# redis
+
+redis_cnf = {
+    'host': 'localhost',
+    'port': 6379,
+    'db': 5,
+    'que_z': 'captcha_z',
+    'que_s': 'captcha_s',
 }
