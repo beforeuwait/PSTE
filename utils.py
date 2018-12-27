@@ -9,7 +9,7 @@ from lxml import etree
 
 
 # logging
-logger = logging.getLogger('main')
+logger = logging.getLogger(name='son')
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler('./pste_log.log')
 fmt = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')

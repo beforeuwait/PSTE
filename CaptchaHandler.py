@@ -27,12 +27,13 @@ _captcha_list = list
 _ocr_result = list
 
 # log
-logger = logging.getLogger('captcha')
+logger = logging.getLogger(name='captcha')
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler('./captcha_log.log')
 fmt = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(fmt)
 logger.addHandler(handler)
+
 
 class Http(RequestAPI):
 
@@ -56,10 +57,11 @@ class Http(RequestAPI):
         # 清理cookie
         # 关闭session
         html = resp[0]
+        status = resp[1]
         [self.dr.sh.discard_cookie_headers_params(i) for i in ['headers', 'cookies', 'params']]
         self.dr.sh.close_session()
 
-        return html
+        return html, status
 
 
 def request_home_page_2_get_captcha_id(http) -> _captcha_html:
@@ -76,36 +78,42 @@ def parse_captcha_id(html_tuple) -> _captcha_list:
         if selector is not None:
             captcha_id = selector.xpath('//input[@id="captchaId"]/@value')[0] \
                 if selector.xpath('//input[@id="captchaId"]/@value') else None
-            cap_id.append(captcha_id)
+            if captcha_id is not None:
+                cap_id.append(captcha_id)
     return cap_id
 
 
 def download_pic_and_ocr(captcha_list, http) -> _ocr_result:
-    url_ocr = cnf.url_ocr
+    captcha_z, captcha_s = None, None
     url_z = deepcopy(cnf.url_z_c).format(captcha_list[0], random.random())
     url_s = deepcopy(cnf.url_s_c).format(captcha_list[1], random.random())
-    img_z = http.user_define_request(url=url_z, headers=cnf.headers_z, method='get')
-    img_s = http.user_define_request(url=url_s, headers=cnf.headers_s, method='get')
-    payloads_z = {
-        'pic': base64.b64encode(img_z),
-        'type': 'pste'
-    }
-    payloads_s = {
-        'pic': base64.b64encode(img_s),
-        'type': 'pste'
-    }
-    result_z = http.receive_and_request(url=url_ocr, payloads=payloads_z, method='post')
-    result_s = http.receive_and_request(url=url_ocr, payloads=payloads_s, method='post')
+    img_z, status_z = http.user_define_request(url=url_z, headers=cnf.headers_z, method='get')
+    img_s, status_s = http.user_define_request(url=url_s, headers=cnf.headers_s, method='get')
 
-    result_dict_z = loads_json(result_z)
-    result_dict_s = loads_json(result_s)
-    captcha_z, captcha_s = None, None
-    if result_dict_s and result_dict_z:
-        if result_dict_s.get('status_code') == 200:
-            captcha_s = result_dict_s.get('data').get('captcha')
+    if status_z == 200 and status_s == 200:
+        # ocr
+        url_ocr = cnf.url_ocr
 
-        if result_dict_z.get('status_code') == 200:
-            captcha_z = result_dict_z.get('data').get('captcha')
+        payloads_z = {
+            'pic': base64.b64encode(img_z),
+            'type': 'pste'
+        }
+        payloads_s = {
+            'pic': base64.b64encode(img_s),
+            'type': 'pste'
+        }
+        result_z = http.receive_and_request(url=url_ocr, payloads=payloads_z, method='post')
+        result_s = http.receive_and_request(url=url_ocr, payloads=payloads_s, method='post')
+
+        result_dict_z = loads_json(result_z)
+        result_dict_s = loads_json(result_s)
+        captcha_z, captcha_s = None, None
+        if result_dict_s is not None and result_dict_z is not None:
+            if result_dict_s.get('status_code') == 200:
+                captcha_s = result_dict_s.get('data').get('captcha')
+
+            if result_dict_z.get('status_code') == 200:
+                captcha_z = result_dict_z.get('data').get('captcha')
 
     return [[captcha_list[0], captcha_z], [captcha_list[1], captcha_s]]
 
@@ -152,17 +160,20 @@ def main_logic():
         http = Http()
         htmls = request_home_page_2_get_captcha_id(http)
         captcha_ids = parse_captcha_id(htmls)
-        captcha_tuple = download_pic_and_ocr(captcha_ids, http)
-        logger.debug(captcha_tuple)
-        result = verify_ocr_push_que(captcha_tuple, http, cli)
-        if not result:
-            time.sleep(0.5)
-            continue
-        else:
-            # 队列里只有21条可用数据
-            cli.ltrim('captcha_z', 0, 20)
-            cli.ltrim('captcha_s', 0, 20)
-            time.sleep(1.5)
+        if captcha_ids and len(captcha_ids) == 2:
+            captcha_tuple = download_pic_and_ocr(captcha_ids, http)
+            logger.debug(captcha_tuple)
+            if captcha_tuple[0][1] is not None or captcha_tuple[1][1] is not None:
+                result = verify_ocr_push_que(captcha_tuple, http, cli)
+                if not result:
+                    time.sleep(1)
+                    continue
+            else:
+                # 队列里只有21条可用数据
+                cli.ltrim('captcha_z', 0, 20)
+                cli.ltrim('captcha_s', 0, 20)
+                time.sleep(3)
+        del http
 
 
 if __name__ == '__main__':

@@ -184,7 +184,7 @@ def get_shixin_data(name, card) -> _data:
     http = RequestAPI()
     while curr_page <= pages and retry > 0:
         html = get_shixin_list(name, card, curr_page, http, ch)
-        if html == 'error':
+        if html == 'error' or html == 'null_html':
             # 验证码重试
             ch.get_new_captcha('shixin')
             retry -= 1
