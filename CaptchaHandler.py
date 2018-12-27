@@ -58,8 +58,6 @@ class Http(RequestAPI):
         # 关闭session
         html = resp[0]
         status = resp[1]
-        [self.dr.sh.discard_cookie_headers_params(i) for i in ['headers', 'cookies', 'params']]
-        self.dr.sh.close_session()
 
         return html, status
 
@@ -158,8 +156,13 @@ def main_logic():
     cli = connect_2_redis()
     while True:
         http = Http()
-        htmls = request_home_page_2_get_captcha_id(http)
-        captcha_ids = parse_captcha_id(htmls)
+        try:
+            htmls = request_home_page_2_get_captcha_id(http)
+            captcha_ids = parse_captcha_id(htmls)
+        except:
+            logger.warning('主页请求错误........')
+            time.sleep(2)
+            continue
         if captcha_ids and len(captcha_ids) == 2:
             captcha_tuple = download_pic_and_ocr(captcha_ids, http)
             logger.debug(captcha_tuple)
@@ -178,3 +181,4 @@ def main_logic():
 
 if __name__ == '__main__':
     main_logic()
+
