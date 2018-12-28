@@ -6,8 +6,8 @@
 重写的目的是，增加灵活，减少引用时的重写
 
 """
+
 import time
-import chardet
 import HTTP.config as config
 import requests
 from copy import deepcopy
@@ -32,16 +32,15 @@ class DealRequest:
     # def do_GET(self, *args) -> (_html, _status_code):
     def do_GET(self, *args) -> _resp:
         """完成get请求"""
-        html = 'null_html'
+        html = b'null_html'
         status_code = 0
         try:
-            response = self.session.get(url=args[0], params=args[1], allow_redirects=args[3], timeout=30)
+            response = self.session.get(url=args[0], params=args[1], allow_redirects=args[3], timeout=5)
         except Exception as e:
             logger.warning('请求出错\t{0}'.format(e, extra=filter_dict))
         else:
             # 请求成功
             status_code = response.status_code
-            logger.debug('GET:\t{0}\t{1}'.format(status_code, args[0]))
             # 应该直接返回字节流，不要解码
             html = response.content
 
@@ -50,10 +49,10 @@ class DealRequest:
     # def do_POST(self, *args) -> (_html, _status_code):
     def do_POST(self, *args) -> _resp:
         """完成POST请求"""
-        html = 'null_html'
+        html = b'null_html'
         status_code = 0
         try:
-            response = self.session.post(url=args[0], data=args[2], allow_redirects=args[3], timeout=30)
+            response = self.session.post(url=args[0], data=args[2], allow_redirects=args[3], timeout=5)
         except Exception as e:
             logger.warning('请求出错\t{0}'.format(e, extra=filter_dict))
         else:
@@ -74,7 +73,7 @@ class DealRequest:
         """接受参数，完成请求"""
         # RETRY
         retry = deepcopy(config.retry)
-        html = 'null_html'
+        html = b'null_html'
         status_code = 0
         # 请求放大写
         method = method.upper()

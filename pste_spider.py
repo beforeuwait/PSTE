@@ -24,7 +24,7 @@ _data = list
 
 
 # 与captcha模块通信
-class CaptchaHandler():
+class CaptchaHandler:
     """
     反馈，索取新的验证码，都通过这个类去执行
     提供当前最新的验证码
@@ -211,7 +211,6 @@ def get_shixin_list(name, card, curr_page, http, ch) -> _html:
         'currentPage': curr_page
     })
     html = http.receive_and_request(url=url_s_list, headers=headers, payloads=payloads_s, method='post')
-
     return html
 
 
@@ -236,3 +235,5 @@ def get_shixin_each_info(data_list, http, ch) -> _data:
         else:
             data.append(info)
     return data
+
+

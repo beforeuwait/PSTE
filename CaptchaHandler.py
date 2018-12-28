@@ -11,6 +11,7 @@ import time
 import logging
 import random
 import base64
+import captcha_ids
 import config as cnf
 from copy import deepcopy
 from HTTP import RequestAPI
@@ -19,6 +20,7 @@ from utils import load_selector
 from utils import loads_json
 from utils import connect_2_redis
 from utils import json_dumps
+from importlib import reload
 
 
 # type
@@ -64,10 +66,16 @@ class Http(RequestAPI):
 
 def request_home_page_2_get_captcha_id(http) -> _captcha_html:
     """请求2个部分的主页，获取captchaId"""
-    html_z = http.receive_and_request(url=cnf.url_z, headers=cnf.headers_z, method='get')
-    html_s = http.receive_and_request(url=cnf.url_s, headers=cnf.headers_s, method='get')
+    html_z, s_z = http.user_define_request(url=cnf.url_z, headers=cnf.headers_z, method='get')
+    html_s, s_s = http.user_define_request(url=cnf.url_s, headers=cnf.headers_s, method='get')
     return (html_z, html_s)
 
+
+def loads_captcha_ids():
+    """从本地读取验证码ids"""
+    captcha_z = [i.strip() for i in open('./DB/captcha_z.txt', 'r', encoding='utf-8')]
+    captcha_s = [i.strip() for i in open('./DB/captcha_s.txt', 'r', encoding='utf-8')]
+    return captcha_z, captcha_s
 
 def parse_captcha_id(html_tuple) -> _captcha_list:
     cap_id = []
@@ -146,39 +154,60 @@ def verify_ocr_push_que(captcha_tuple, http, cli) -> bool:
 
 # 主逻辑部分
 
-def main_logic():
-    """做4件事
-    1. 拿到最新的captchaId
-    2. 拿到id对应的img
-    3. ocr以及验证
-    4. 放入队列
-    """
+# def main_logic():
+#     """做4件事
+#     1. 拿到最新的captchaId
+#     2. 拿到id对应的img
+#     3. ocr以及验证
+#     4. 放入队列
+#     """
+#     cli = connect_2_redis()
+#     while True:
+#         http = Http()
+#         try:
+#             htmls = request_home_page_2_get_captcha_id(http)
+#             captcha_ids = parse_captcha_id(htmls)
+#         except:
+#             logger.warning('主页请求错误........')
+#             time.sleep(2)
+#             continue
+#         if captcha_ids and len(captcha_ids) == 2:
+#             captcha_tuple = download_pic_and_ocr(captcha_ids, http)
+#             logger.debug(captcha_tuple, cli.llen('captcha_z'), cli.llen('captcha_s'))
+#             if captcha_tuple[0][1] is not None or captcha_tuple[1][1] is not None:
+#                 result = verify_ocr_push_que(captcha_tuple, http, cli)
+#                 if not result:
+#                     time.sleep(1)
+#                     continue
+#             else:
+#                 # 队列里只有21条可用数据
+#                 cli.ltrim('captcha_z', 0, 20)
+#                 cli.ltrim('captcha_s', 0, 20)
+#                 time.sleep(3)
+#         del http
+
+def main_new():
+    # 从本地读取到验证码id集
+
+    # 链接redis
     cli = connect_2_redis()
     while True:
         http = Http()
-        try:
-            htmls = request_home_page_2_get_captcha_id(http)
-            captcha_ids = parse_captcha_id(htmls)
-        except:
-            logger.warning('主页请求错误........')
-            time.sleep(2)
-            continue
-        if captcha_ids and len(captcha_ids) == 2:
-            captcha_tuple = download_pic_and_ocr(captcha_ids, http)
-            logger.debug(captcha_tuple)
-            if captcha_tuple[0][1] is not None or captcha_tuple[1][1] is not None:
-                result = verify_ocr_push_que(captcha_tuple, http, cli)
-                if not result:
-                    time.sleep(1)
-                    continue
-            else:
-                # 队列里只有21条可用数据
-                cli.ltrim('captcha_z', 0, 20)
-                cli.ltrim('captcha_s', 0, 20)
-                time.sleep(3)
+        cli.ltrim('captcha_z', 0, 20)
+        cli.ltrim('captcha_s', 0, 20)
+        # 下载验证码
+        cap_ids = [random.choice(captcha_ids.caps), random.choice(captcha_ids.caps)]
+        captcha_tuple = download_pic_and_ocr(cap_ids, http)
+        logger.debug(captcha_tuple)
+        if captcha_tuple[0][1] is not None or captcha_tuple[1][1] is not None:
+            result = verify_ocr_push_que(captcha_tuple, http, cli)
+            if not result:
+                time.sleep(1)
+                continue
+        time.sleep(2)
         del http
-
+        reload(captcha_ids)
 
 if __name__ == '__main__':
-    main_logic()
+    main_new()
 
