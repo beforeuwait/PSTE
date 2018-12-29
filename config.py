@@ -16,7 +16,8 @@
 
 # 验证码
 
-url_ocr = 'http://47.97.181.94:21000/pstecaptcha'
+# url_ocr = 'http://47.97.181.94:21000/pstecaptcha'
+url_ocr = 'http://127.0.0.1:21000/pstecaptcha'
 
 url_z = 'http://zhixing.court.gov.cn/search/'
 
@@ -178,9 +179,10 @@ params_s_info = {
 # redis
 
 redis_cnf = {
-    'host': 'localhost',
+    'host': '118.123.201.169',
     'port': 6379,
     'db': 5,
     'que_z': 'captcha_z',
     'que_s': 'captcha_s',
+    'psw': 'ftmore!@#20181119'
 }

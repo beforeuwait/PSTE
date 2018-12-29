@@ -12,6 +12,7 @@ import logging
 import random
 import base64
 import captcha_ids
+import requests
 import config as cnf
 from copy import deepcopy
 from HTTP import RequestAPI
@@ -63,6 +64,13 @@ class Http(RequestAPI):
 
         return html, status
 
+    def do_ocr(self, **kwargs):
+        url = cnf.url_ocr
+        payloads = kwargs.get('payloads')
+        result = requests.post(url, data=payloads).content.decode('utf8')
+        return result
+
+
 
 def request_home_page_2_get_captcha_id(http) -> _captcha_html:
     """请求2个部分的主页，获取captchaId"""
@@ -108,9 +116,10 @@ def download_pic_and_ocr(captcha_list, http) -> _ocr_result:
             'pic': base64.b64encode(img_s),
             'type': 'pste'
         }
-        result_z = http.receive_and_request(url=url_ocr, payloads=payloads_z, method='post')
-        result_s = http.receive_and_request(url=url_ocr, payloads=payloads_s, method='post')
-
+        # result_z = http.receive_and_request(url=url_ocr, payloads=payloads_z, method='post')
+        result_z = http.do_ocr(url=url_ocr, payloads=payloads_z, method='post')
+        # result_s = http.receive_and_request(url=url_ocr, payloads=payloads_s, method='post')
+        result_s = http.do_ocr(url=url_ocr, payloads=payloads_s, method='post')
         result_dict_z = loads_json(result_z)
         result_dict_s = loads_json(result_s)
         captcha_z, captcha_s = None, None
@@ -204,7 +213,7 @@ def main_new():
             if not result:
                 time.sleep(1)
                 continue
-        time.sleep(2)
+        time.sleep(1)
         del http
         reload(captcha_ids)
 

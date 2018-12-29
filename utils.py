@@ -48,7 +48,10 @@ def load_selector(html):
 def connect_2_redis():
     cli = None
     try:
-        cli = StrictRedis(host=cnf.redis_cnf.get('host'), port=cnf.redis_cnf.get('port'), db=cnf.redis_cnf.get('db'))
+        cli = StrictRedis(host=cnf.redis_cnf.get('host'),
+                          port=cnf.redis_cnf.get('port'),
+                          db=cnf.redis_cnf.get('db'),
+                          password=cnf.redis_cnf.get('psw'))
     except Exception as e:
         logger.warning('redis链接出错'.format(e))
     return cli

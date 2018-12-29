@@ -8,6 +8,7 @@ from HTTP import RequestAPI
 from multiprocessing import Pool
 from utils import loads_json
 from utils import pop_msg
+from utils import logger
 
 """
     拿到参数 姓名+身份证
@@ -71,6 +72,7 @@ def executoer_for_web_server(name, card) -> _final_data:
             'baidu': []
         }
     }
+    logger.debug('接受到请求:\t{0}\t{1}'.format(name, card))
     pool = Pool(2)
     result = []
     for i in ['zhixing', 'shixin']:
@@ -96,7 +98,7 @@ def get_zhixing_data(name, card) -> _query_data:
     ch = CaptchaHandler()
     ch.get_new_captcha('zhixing')
     curr_page, pages = 1, 1
-    retry = 3
+    retry = 2
     data_z = []
     http = RequestAPI()
     while curr_page <= pages and retry > 0:
@@ -170,23 +172,31 @@ def get_zhixing_each_info(data_list, http, ch) -> _data:
         info = loads_json(http.receive_and_request(url=url_info, headers=headers, params=params, method='get'))
         if not info:
             # 代表验证码错误
-            ch.get_new_captcha('shixin')
+            ch.get_new_captcha('zhixing')
         data.append(info)
     return data
 
 
 def get_shixin_data(name, card) -> _data:
     ch = CaptchaHandler()
+    a = time.time()
+    logger.debug('获取shixin的验证码')
     ch.get_new_captcha('shixin')
+    b = time.time()
+    logger.debug('完成shixin的验证码获取\t{0}'.format(b-a))
     curr_page, pages = 1, 1
-    retry = 3
+    retry = 2
     data_s = []
     http = RequestAPI()
     while curr_page <= pages and retry > 0:
         html = get_shixin_list(name, card, curr_page, http, ch)
         if html == 'error' or html == 'null_html':
             # 验证码重试
+            c = time.time()
+            logger.info('shixin的captcha_id失效,重新获取并执行')
             ch.get_new_captcha('shixin')
+            d = time.time()
+            logger.info('完成shixin验证码的重新获取\t{0}'.format(d-c))
             retry -= 1
             continue
         data_list, pages = parse_zhixing_shixin_list(html)
